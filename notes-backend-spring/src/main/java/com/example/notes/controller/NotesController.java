@@ -3,6 +3,7 @@ package com.example.notes.controller;
 import com.example.notes.dto.NoteRequest;
 import com.example.notes.model.Note;
 import com.example.notes.repo.NoteRepository;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -14,7 +15,12 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api")
 public class NotesController {
+
     private final NoteRepository repo;
+
+    // Add frontend base URL from application.properties
+    @Value("${app.frontend.base-url}")
+    private String frontendBaseUrl;
 
     public NotesController(NoteRepository repo) { this.repo = repo; }
 
@@ -53,6 +59,7 @@ public class NotesController {
         return ResponseEntity.ok().build();
     }
 
+    // Share a note → returns full public URL
     @PostMapping("/notes/{id}/share")
     public ResponseEntity<?> share(@PathVariable Long id) {
         Optional<Note> opt = repo.findById(id);
@@ -64,12 +71,14 @@ public class NotesController {
             n.setPublicToken(token);
             repo.save(n);
         }
+        String publicUrl = frontendBaseUrl + "/shared/" + token; // full frontend URL
         return ResponseEntity.ok().body(java.util.Map.of(
                 "token", token,
-                "publicUrl", "/api/public/" + token
+                "publicUrl", publicUrl
         ));
     }
 
+    // Backend endpoint to get note by token
     @GetMapping("/public/{token}")
     public ResponseEntity<Note> publicNote(@PathVariable String token) {
         return repo.findByPublicToken(token).map(ResponseEntity::ok).orElse(ResponseEntity.notFound().build());
